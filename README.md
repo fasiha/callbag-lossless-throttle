@@ -1,12 +1,12 @@
-# callbag-throttle
+# callbag-lossless-throttle
 
 Callbag operator that transforms either a pullable or listenable source into a listenable sink that waits for a fixed period of time before sending.
 
-If the source is listenable and producing data faster than the delay, data is queued up internally.
+If the source is listenable and producing data faster than the delay, data is queued up internally and emitted in the order received, making this a **lossless** throttle operator.
 
 Example usecase: a callbag source is generating URLs on a server with rate limits of, say, one request per second. This operator can be used to throttle the source to 1000 milliseconds:
 ```js
-const throttle = require('callbag-throttle');
+const throttle = require('callbag-lossless-throttle');
 const forEach = require('callbag-for-each');
 
 pipe(urlSource, throttle(1000), forEach(url => fetch(url)));
@@ -19,18 +19,73 @@ I feel I have to give *some* background on **callbags**, which is the name [Andr
 ## Installation
 On the command line in your Node.js app, run
 ```
-$ npm install --save callbag-throttle
+$ npm install --save callbag-lossless-throttle
 ```
 Then 
 load it via
 ```js
-const throttle = require('callbag-throttle');
+const throttle = require('callbag-lossless-throttle');
 ```
 
 ## API
-With `const throttle = require('callbag-throttle')`, insert the following operator between a source and a sink to make the source a throttled listenable, i.e., a source that enforces a delay (in milliseconds) between data. Even the termination signal from the original source is throttled (is that ok?).
+With `const throttle = require('callbag-lossless-throttle')`, insert the following operator between a source and a sink to make the source a throttled listenable, i.e., a source that enforces a delay (in milliseconds) between data. Even the termination signal from the original source is throttled (is that ok?).
 ```js
 throttle(delayMilliseconds)
+```
+
+### Example
+Let's use Node's [`process.hrtime`](https://nodejs.org/api/process.html#process_process_hrtime_time) to show how this works in a few difference cases.
+
+Throttling a listenable callbag that emits slow enough doesn't make a difference.
+```js
+const throttle = require('callbag-lossless-throttle');
+const { fromIter, interval, take, forEach, pipe } = require('callbag-basics');
+function elapsed(start) {
+  const end = process.hrtime(start);
+  return Math.round(end[0] * 1000 + end[1] / 1e6);
+}
+let tic = process.hrtime();
+pipe(interval(100), take(5), forEach(x => console.log(`${elapsed(tic)} ms: original`)));
+pipe(interval(100), take(5), throttle(50), forEach(x => console.log(`${elapsed(tic)} ms: (not really) throttled`)));
+// 102 ms: original
+// 105 ms: (not really) throttled
+// 203 ms: original
+// 205 ms: (not really) throttled
+// 305 ms: original
+// 305 ms: (not really) throttled
+// 405 ms: original
+// 405 ms: (not really) throttled
+// 505 ms: original
+// 506 ms: (not really) throttled
+```
+As you can see, throtlling a listenable emitting every hundred milliseconds by fifty milliseconds doesn't change things: both emit almost in lockstep. But if we throttle it at, say, 200 milliseconds, the difference becomes obvious: both start immediately but:
+```js
+pipe(interval(100), take(5), throttle(200), forEach(x => console.log(`${elapsed(tic)} ms: throttled`)));
+// 103 ms: original
+// 106 ms: throttled
+// 211 ms: original
+// 312 ms: throttled
+// 312 ms: original
+// 414 ms: original
+// 513 ms: throttled
+// 514 ms: original
+// 715 ms: throttled
+// 920 ms: throttled
+```
+Note how the throttled callbag is lossless: data is queued internally.
+
+With pullable callbags, note how both callbags begin immediately, but the unthrottled `forEach` zips through the source in four milliseconds. Meanwhile, the throttled callbag continues its sedate pace:
+```js
+pipe(fromIter([ 10, 20, 30, 40 ]), forEach(x => console.log(`${elapsed(tic)} ms: original`)));
+pipe(fromIter([ 10, 20, 30, 40 ]), throttle(50), forEach(x => console.log(`${elapsed(tic)} ms: throttled`)));
+// 0 ms: original
+// 2 ms: original
+// 3 ms: original
+// 3 ms: original
+// 4 ms: throttled
+// 56 ms: throttled
+// 112 ms: throttled
+// 177 ms: throttled
 ```
 
 ## Tutorial
@@ -147,3 +202,5 @@ So I could have used just this throttled sink to accomplish my goal but I was al
 - and just in general get a better sense of what callbags are doing, before I arrived at the present library.
 
 Maybe this can be helpful to someone who's starting out wondering how to make callbags do something new.
+
+(Note, this library was originally called `callbag-throttle` but André alerted me to RxJS' **lossy** [`throttle`](http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html#instance-method-throttle) operator, so this was renamed to avoid confusion.)

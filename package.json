@@ -1,25 +1,26 @@
 {
-  "name": "callbag-throttle",
-  "version": "1.0.2",
-  "description": "Throttle operator for callbags, enforcing a cooldown quiet time between emissions",
+  "name": "callbag-lossless-throttle",
+  "version": "1.0.0",
+  "description": "Lossless throttle operator for callbags, enforcing a cooldown quiet time between emissions and queuing arrivals",
   "main": "index.js",
   "scripts": {
     "test": "tape tests.js"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/fasiha/callbag-throttle.git"
+    "url": "git+https://github.com/fasiha/callbag-lossless-throttle.git"
   },
   "keywords": [
     "callbag",
+    "lossless",
     "throttle"
   ],
   "author": "Ahmed Fasih",
   "license": "Unlicense",
   "bugs": {
-    "url": "https://github.com/fasiha/callbag-throttle/issues"
+    "url": "https://github.com/fasiha/callbag-lossless-throttle/issues"
   },
-  "homepage": "https://github.com/fasiha/callbag-throttle#readme",
+  "homepage": "https://github.com/fasiha/callbag-lossless-throttle#readme",
   "devDependencies": {
     "callbag-basics": "^2.0.1",
     "tape": "^4.9.0"
