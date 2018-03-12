@@ -1,8 +1,6 @@
 # callbag-lossless-throttle
 
-Callbag operator that transforms either a pullable or listenable source into a listenable sink that waits for a fixed period of time before sending.
-
-If the source is listenable and producing data faster than the delay, data is queued up internally and emitted in the order received, making this a **lossless** throttle operator.
+Callbag operator that transforms either a pullable or listenable source into a listenable that enforces a fixed time delay between emissions. If the source is listenable and produces data faster than the delay, data is queued up internally and emitted in the order received, making this a **lossless** throttle operator. No data is dropped. (Compare to [`callbag-throttle`](https://github.com/fasiha/callbag-throttle) for a lossy version.)
 
 Example usecase: a callbag source is generating URLs on a server with rate limits of, say, one request per second. This operator can be used to throttle the source to 1000 milliseconds:
 ```js
@@ -44,7 +42,7 @@ function elapsed(start) {
   const end = process.hrtime(start);
   return Math.round(end[0] * 1000 + end[1] / 1e6);
 }
-let tic = process.hrtime();
+var tic = process.hrtime();
 pipe(interval(100), take(5), forEach(x => console.log(`${elapsed(tic)} ms: original`)));
 pipe(interval(100), take(5), throttle(50), forEach(x => console.log(`${elapsed(tic)} ms: (not really) throttled`)));
 // 102 ms: original
@@ -60,6 +58,8 @@ pipe(interval(100), take(5), throttle(50), forEach(x => console.log(`${elapsed(t
 ```
 As you can see, throtlling a listenable emitting every hundred milliseconds by fifty milliseconds doesn't change things: both emit almost in lockstep. But if we throttle it at, say, 200 milliseconds, the difference becomes obvious: both start immediately but:
 ```js
+var tic = process.hrtime();
+pipe(interval(100), take(5), forEach(x => console.log(`${elapsed(tic)} ms: original`)));
 pipe(interval(100), take(5), throttle(200), forEach(x => console.log(`${elapsed(tic)} ms: throttled`)));
 // 103 ms: original
 // 106 ms: throttled
@@ -76,6 +76,7 @@ Note how the throttled callbag is lossless: data is queued internally.
 
 With pullable callbags, note how both callbags begin immediately, but the unthrottled `forEach` zips through the source in four milliseconds. Meanwhile, the throttled callbag continues its sedate pace:
 ```js
+var tic = process.hrtime();
 pipe(fromIter([ 10, 20, 30, 40 ]), forEach(x => console.log(`${elapsed(tic)} ms: original`)));
 pipe(fromIter([ 10, 20, 30, 40 ]), throttle(50), forEach(x => console.log(`${elapsed(tic)} ms: throttled`)));
 // 0 ms: original
