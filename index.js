@@ -59,7 +59,7 @@ const throttle = milliseconds => source => (start, sink) => {
   // us: we're a listenable callback, and are only going to send when the throttle permits.
   sink(0, (t, d) => {
     if (t === 2) {
-      cancelTimeout(timeout);
+      clearTimeout(timeout);
       sinkTerminated = true;
     }
   });
